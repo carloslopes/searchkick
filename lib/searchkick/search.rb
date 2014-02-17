@@ -275,6 +275,17 @@ module Searchkick
 
       # filters
       filters = where_filters.call(options[:where])
+
+      # nested filter
+      if value = options[:nested]
+        filters << {
+          nested: {
+            path: value[:path],
+            filter: { and: where_filters.call(value[:where]) }
+          }
+        }
+      end
+
       if filters.any?
         payload[:filter] = {
           and: filters

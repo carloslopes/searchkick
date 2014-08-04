@@ -23,12 +23,7 @@ module Searchkick
     end
 
     def store(record)
-      client.index(
-        index: name,
-        type: document_type(record),
-        id: search_id(record),
-        body: search_data(record)
-      )
+      client.index(store_arguments(record))
     end
 
     def remove(record)
@@ -81,6 +76,14 @@ module Searchkick
 
     def search_id(record)
       record.id.is_a?(Numeric) ? record.id : record.id.to_s
+    end
+
+    def parent_id(record)
+      if record.search_parent_id.is_a?(Numeric)
+        record.search_parent_id
+      else
+        record.search_parent_id.to_s
+      end
     end
 
     def search_data(record)
@@ -136,6 +139,19 @@ module Searchkick
       else
         obj
       end
+    end
+
+    def store_arguments(record)
+      base_args = { index: name,
+                    type: document_type(record),
+                    id: search_id(record),
+                    body: search_data(record) }
+
+      if parent_id = parent_id(record)
+        base_args[:parent] = parent_id
+      end
+
+      base_args
     end
 
   end

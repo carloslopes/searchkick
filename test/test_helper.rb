@@ -81,20 +81,17 @@ else
     t.string :type
   end
 
-  class Product < ActiveRecord::Base
+  ActiveRecord::Migration.create_table :tags do |t|
+    t.string :name
+    t.integer :product_id
   end
 
-  class Store < ActiveRecord::Base
-  end
-
-  class Animal < ActiveRecord::Base
-  end
-
-  class Dog < Animal
-  end
-
-  class Cat < Animal
-  end
+  Product = Class.new(ActiveRecord::Base)
+  Store   = Class.new(ActiveRecord::Base)
+  Animal  = Class.new(ActiveRecord::Base)
+  Dog     = Class.new(Animal)
+  Cat     = Class.new(Animal)
+  Tag     = Class.new(ActiveRecord::Base)
 end
 
 class Product
@@ -152,6 +149,27 @@ class Animal
   searchkick autocomplete: [:name], suggest: [:name], index_name: -> { "#{self.name.tableize}-#{Date.today.year}" }
 end
 
+class Tag
+  belongs_to :product
+
+  searchkick \
+    index_name: Product.searchkick_index.name,
+    merge_mappings: true,
+    mappings: {
+      tag: {
+        '_parent' => { type: 'product' }
+      }
+    }
+
+  def search_data
+    { name: name }
+  end
+
+  def search_parent_id
+    product_id
+  end
+end
+
 Product.searchkick_index.delete if Product.searchkick_index.exists?
 Product.reindex
 Product.reindex # run twice for both index paths
@@ -159,21 +177,26 @@ Product.reindex # run twice for both index paths
 Store.reindex
 Animal.reindex
 
+Tag.reindex
+
 class Minitest::Unit::TestCase
 
   def setup
     Product.destroy_all
     Store.destroy_all
     Animal.destroy_all
+    Tag.destroy_all
   end
 
   protected
 
   def store(documents, klass = Product)
-    documents.shuffle.each do |document|
+    records = documents.shuffle.map do |document|
       klass.create!(document)
     end
+
     klass.searchkick_index.refresh
+    records
   end
 
   def store_names(names, klass = Product)

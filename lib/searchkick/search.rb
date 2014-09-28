@@ -195,7 +195,7 @@ module Searchkick
         proc do |field, value|
           if value.is_a?(Array) # in query
             if value.any?
-              {or: value.map{|v| term_filters.call(field, v) }}
+              { terms: { field => value }}
             else
               {terms: {field => value}} # match nothing
             end
